@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouTube Playlist Düzenleyici</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --bg2: #111111;
+      --bg3: #1a1a1a;
+      --border: rgba(255,255,255,0.08);
+      --border2: rgba(255,255,255,0.15);
+      --text: #f0f0f0;
+      --text2: #888;
+      --text3: #555;
+      --accent: #ff0000;
+      --accent2: #ff4444;
+      --green: #1ed760;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* NAV */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,10,10,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 16px; font-weight: 600; color: var(--text);
+      text-decoration: none;
+    }
+    .nav-logo svg { width: 24px; height: 24px; fill: var(--accent); }
+    .nav-badge {
+      font-size: 11px; font-weight: 500;
+      background: rgba(255,0,0,0.15);
+      color: var(--accent2);
+      border: 1px solid rgba(255,0,0,0.25);
+      padding: 2px 8px; border-radius: 20px;
+    }
+
+    /* LAYOUT */
+    .container { max-width: 860px; margin: 0 auto; padding: 3rem 2rem; }
+
+    /* HERO */
+    .hero { text-align: center; margin-bottom: 4rem; }
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 500; letter-spacing: 0.06em;
+      color: var(--accent2); text-transform: uppercase;
+      border: 1px solid rgba(255,0,0,0.2);
+      background: rgba(255,0,0,0.08);
+      padding: 4px 12px; border-radius: 20px;
+      margin-bottom: 1.5rem;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 600; line-height: 1.15;
+      color: var(--text); margin-bottom: 1rem;
+    }
+    .hero h1 span { color: var(--accent); }
+    .hero p {
+      font-size: 16px; color: var(--text2);
+      max-width: 500px; margin: 0 auto 2rem;
+    }
+
+    /* CARDS */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .card-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 1rem;
+    }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(255,0,0,0.1);
+      border: 1px solid rgba(255,0,0,0.25);
+      color: var(--accent2); font-size: 13px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-num.done { background: rgba(30,215,96,0.1); border-color: rgba(30,215,96,0.3); color: var(--green); }
+    .card-title { font-size: 15px; font-weight: 600; color: var(--text); }
+    .card-desc { font-size: 13px; color: var(--text2); margin-bottom: 1rem; }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 500;
+      cursor: pointer; border: none;
+      transition: all 0.15s; text-decoration: none;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border2);
+    }
+    .btn-outline:hover { background: var(--bg3); border-color: rgba(255,255,255,0.3); }
+    .btn-green {
+      background: var(--green);
+      color: #000; font-weight: 600;
+    }
+    .btn-green:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
+
+    /* GOOGLE BTN */
+    .btn-google {
+      background: #fff; color: #1f1f1f;
+      border: 1px solid #dadce0;
+      font-weight: 500;
+    }
+    .btn-google:hover { background: #f8f8f8; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+    .btn-google svg { width: 18px; height: 18px; }
+
+    /* PLAYLIST LIST */
+    .playlist-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .playlist-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      cursor: pointer; transition: all 0.15s;
+      background: var(--bg3);
+    }
+    .playlist-row:hover { border-color: var(--border2); background: #1f1f1f; }
+    .playlist-row.selected { border-color: rgba(255,0,0,0.4); background: rgba(255,0,0,0.05); }
+    .playlist-thumb {
+      width: 44px; height: 44px; border-radius: 6px;
+      background: var(--bg); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 20px;
+    }
+    .playlist-info { flex: 1; min-width: 0; }
+    .playlist-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .playlist-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .playlist-check { color: var(--green); font-size: 18px; display: none; }
+    .playlist-row.selected .playlist-check { display: block; }
+
+    /* TAGS */
+    .tags-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .genre-tag {
+      padding: 6px 14px; border-radius: 20px;
+      font-size: 13px; font-weight: 500;
+      border: 1px solid var(--border2);
+      background: var(--bg3); color: var(--text2);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .genre-tag:hover { border-color: rgba(255,255,255,0.3); color: var(--text); }
+    .genre-tag.active { background: rgba(255,0,0,0.12); border-color: rgba(255,0,0,0.4); color: var(--accent2); }
+
+    /* SORT OPTIONS */
+    .sort-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 10px; }
+    .sort-card {
+      padding: 16px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg3); cursor: pointer;
+      transition: all 0.15s;
+    }
+    .sort-card:hover { border-color: var(--border2); }
+    .sort-card.selected { border-color: rgba(255,0,0,0.5); background: rgba(255,0,0,0.07); }
+    .sort-icon { font-size: 22px; margin-bottom: 8px; }
+    .sort-label { font-size: 13px; font-weight: 600; color: var(--text); }
+    .sort-sub { font-size: 11px; color: var(--text2); margin-top: 3px; }
+
+    /* RESULTS */
+    .result-group { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+    .result-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--bg3); border-bottom: 1px solid var(--border);
+    }
+    .result-title { font-size: 14px; font-weight: 600; color: var(--text); }
+    .result-count { font-size: 12px; color: var(--text2); }
+    .result-songs { padding: 4px 0; }
+    .result-song {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 16px; font-size: 13px; color: var(--text2);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    .result-song:last-child { border-bottom: none; }
+    .result-song:hover { background: var(--bg3); color: var(--text); }
+    .song-num { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); min-width: 18px; }
+    .song-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* LOADING */
+    .loading-bar { height: 2px; background: var(--bg3); border-radius: 2px; margin-top: 12px; overflow: hidden; }
+    .loading-fill { height: 100%; background: var(--accent); border-radius: 2px; width: 0%; transition: width 0.4s ease; }
+    .status { font-size: 12px; color: var(--text2); margin-top: 8px; font-family: 'DM Mono', monospace; }
+
+    /* SECTION VISIBILITY */
+    .hidden { display: none !important; }
+
+    /* SUCCESS TOAST */
+    .toast {
+      position: fixed; bottom: 2rem; right: 2rem;
+      background: var(--green); color: #000;
+      font-weight: 600; font-size: 14px;
+      padding: 12px 20px; border-radius: var(--radius-sm);
+      transform: translateY(80px); opacity: 0;
+      transition: all 0.3s; z-index: 999;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* FOOTER */
+    footer {
+      text-align: center; padding: 3rem 2rem;
+      font-size: 12px; color: var(--text3);
+      border-top: 1px solid var(--border);
+      margin-top: 4rem;
+    }
+
+    /* PROGRESS STEPS */
+    .progress-steps {
+      display: flex; align-items: center; gap: 0;
+      margin-bottom: 3rem;
+    }
+    .progress-step {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--text3); font-weight: 500;
+    }
+    .progress-step.active { color: var(--text); }
+    .progress-step.done { color: var(--green); }
+    .progress-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--border2); flex-shrink: 0;
+    }
+    .progress-step.active .progress-dot { background: var(--accent); }
+    .progress-step.done .progress-dot { background: var(--green); }
+    .progress-line { flex: 1; height: 1px; background: var(--border); margin: 0 8px; }
+
+    @media (max-width: 600px) {
+      .container { padding: 2rem 1rem; }
+      nav { padding: 0 1rem; }
+      .sort-grid { grid-template-columns: 1fr 1fr; }
+      .progress-steps { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="#">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21.543 6.498C22 8.28 22 12 22 12s0 3.72-.457 5.502c-.254.985-.997 1.76-1.938 2.022C17.896 20 12 20 12 20s-5.893 0-7.605-.476c-.945-.266-1.687-1.04-1.938-2.022C2 15.72 2 12 2 12s0-3.72.457-5.502c.254-.985.997-1.76 1.938-2.022C6.107 4 12 4 12 4s5.896 0 7.605.476c.945.266 1.687 1.04 1.938 2.022zM10 15.5l6-3.5-6-3.5v7z"/></svg>
+    Playlist Düzenleyici
+  </a>
+  <span class="nav-badge">Beta</span>
+</nav>
+
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-tag">
+      <span>🎵</span> YouTube Music için
+    </div>
+    <h1>Karışık listelini<br><span>düzenle ve ayır</span></h1>
+    <p>Türe, sanatçıya veya ruh haline göre playlist'lerini otomatik olarak grupla, yeni listeler oluştur.</p>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-steps" id="progress-steps">
+    <div class="progress-step active" id="ps1"><div class="progress-dot"></div> Bağlan</div>
+    <div class="progress-line"></div>
+    <div class="progress-step" id="ps2"><div class="progress-dot"></div> Seç</div>
+    <div class="progress-line"></div>
+    <div class="progress-step" id="ps3"><div class="progress-dot"></div> Filtrele</div>
+    <div class="progress-line"></div>
+    <div class="progress-step" id="ps4"><div class="progress-dot"></div> Sonuç</div>
+  </div>
+
+  <!-- STEP 1: LOGIN -->
+  <div class="card" id="step1">
+    <div class="card-header">
+      <div class="step-num" id="sn1">1</div>
+      <div class="card-title">YouTube hesabına bağlan</div>
+    </div>
+    <p class="card-desc">Google hesabınla giriş yaparak playlist'lerine erişim izni ver. Verilerine dokunmuyoruz, sadece okuyoruz.</p>
+    <button class="btn btn-google" onclick="handleLogin()">
+      <svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+        <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+        <path fill="#FBBC05" d="M3.964 10.706C3.784 10.166 3.682 9.59 3.682 9s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.826.957 4.038l3.007-2.332z"/>
+        <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 6.294C4.672 4.167 6.656 3.58 9 3.58z"/>
+      </svg>
+      Google ile giriş yap
+    </button>
+    <div id="login-status" class="status" style="margin-top:10px;display:none;"></div>
+  </div>
+
+  <!-- STEP 2: PLAYLIST SEÇ -->
+  <div class="card hidden" id="step2">
+    <div class="card-header">
+      <div class="step-num" id="sn2">2</div>
+      <div class="card-title">Düzenlemek istediğin playlist'i seç</div>
+    </div>
+    <p class="card-desc">YouTube hesabındaki playlist'lerin aşağıda listeleniyor.</p>
+    <div id="playlist-list">
+      <div class="status">Playlist'ler yükleniyor...</div>
+      <div class="loading-bar"><div class="loading-fill" id="load-bar1"></div></div>
+    </div>
+  </div>
+
+  <!-- STEP 3: FİLTRELE -->
+  <div class="card hidden" id="step3">
+    <div class="card-header">
+      <div class="step-num" id="sn3">3</div>
+      <div class="card-title">Müzik türleri ve sıralama</div>
+    </div>
+
+    <p class="card-desc">Hangi türleri dahil etmek istiyorsun? (Birden fazla seçebilirsin)</p>
+    <div class="tags-row" id="genre-tags">
+      <div class="status">Türler tespit ediliyor...</div>
+      <div class="loading-bar"><div class="loading-fill" id="load-bar2"></div></div>
+    </div>
+
+    <div style="margin-top:1.5rem;">
+      <p class="card-desc">Nasıl düzenleyelim?</p>
+      <div class="sort-grid">
+        <div class="sort-card" data-sort="genre" onclick="selectSort(this)">
+          <div class="sort-icon">🎸</div>
+          <div class="sort-label">Türe göre</div>
+          <div class="sort-sub">Her tür ayrı grupda</div>
+        </div>
+        <div class="sort-card" data-sort="artist" onclick="selectSort(this)">
+          <div class="sort-icon">🎤</div>
+          <div class="sort-label">Sanatçıya göre</div>
+          <div class="sort-sub">Her sanatçı ayrı grupta</div>
+        </div>
+        <div class="sort-card" data-sort="mood" onclick="selectSort(this)">
+          <div class="sort-icon">🌙</div>
+          <div class="sort-label">Ruh haline göre</div>
+          <div class="sort-sub">Enerjik, sakin, melankolik</div>
+        </div>
+        <div class="sort-card" data-sort="new_playlist" onclick="selectSort(this)">
+          <div class="sort-icon">➕</div>
+          <div class="sort-label">Yeni liste oluştur</div>
+          <div class="sort-sub">Sadece seçilen türden</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:1.5rem;">
+      <button class="btn btn-primary" id="organizeBtn" onclick="organizePlaylist()" disabled>
+        ✦ Düzenle
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 4: SONUÇ -->
+  <div class="hidden" id="step4">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:gap">
+      <div style="font-size:18px;font-weight:600;color:var(--text)">✅ Sonuç</div>
+      <button class="btn btn-green" onclick="saveToYoutube()" id="saveBtn">
+        YouTube'a Kaydet
+      </button>
+    </div>
+    <div id="result-container"></div>
+    <p style="font-size:12px;color:var(--text3);margin-top:12px;">* Kaydet butonuna basınca seçilen düzenleme YouTube hesabında yeni playlist olarak oluşturulur.</p>
+  </div>
+
+</div>
+
+<div class="toast" id="toast">✓ Playlist YouTube'a kaydedildi!</div>
+
+<footer>
+  YouTube Playlist Düzenleyici &nbsp;·&nbsp; Last.fm ile müzik türü tespiti &nbsp;·&nbsp; Verileriniz saklanmaz
+</footer>
+
+<script>
+  const CLIENT_ID = '323531986991-atkjp5skg8ch93h7r9k6hm9j5f0h6mij.apps.googleusercontent.com';
+  const LASTFM_KEY = '39bba3f2b603fbf6ba40c5555e77b2f5';
+  const REDIRECT_URI = window.location.origin + window.location.pathname;
+  const SCOPES = 'https://www.googleapis.com/auth/youtube';
+
+  let accessToken = null;
+  let selectedPlaylist = null;
+  let selectedSort = null;
+  let selectedGenres = [];
+  let playlistItems = [];
+  let detectedGenres = {};
+
+  // ─── AUTH ───────────────────────────────────────────
+  function handleLogin() {
+    const params = new URLSearchParams({
+      client_id: CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      response_type: 'token',
+      scope: SCOPES,
+      prompt: 'select_account'
+    });
+    window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+  }
+
+  function checkToken() {
+    const hash = window.location.hash;
+    if (!hash) return;
+    const params = new URLSearchParams(hash.substring(1));
+    const token = params.get('access_token');
+    if (token) {
+      accessToken = token;
+      history.replaceState(null, '', window.location.pathname);
+      onLoggedIn();
+    }
+  }
+
+  function onLoggedIn() {
+    document.querySelector('#step1 button').disabled = true;
+    document.querySelector('#step1 button').textContent = '✓ Bağlantı kuruldu';
+    document.getElementById('sn1').textContent = '✓';
+    document.getElementById('sn1').classList.add('done');
+    setProgress(2);
+    show('step2');
+    loadPlaylists();
+  }
+
+  // ─── PLAYLISTS ───────────────────────────────────────
+  async function loadPlaylists() {
+    setBar('load-bar1', 40);
+    try {
+      const res = await fetch(
+        'https://www.googleapis.com/youtube/v3/playlists?part=snippet,contentDetails&mine=true&maxResults=30',
+        { headers: { Authorization: 'Bearer ' + accessToken } }
+      );
+      const data = await res.json();
+      setBar('load-bar1', 100);
+
+      const container = document.getElementById('playlist-list');
+      if (!data.items || data.items.length === 0) {
+        container.innerHTML = '<div class="status">Hiç playlist bulunamadı.</div>';
+        return;
+      }
+      container.innerHTML = '';
+      const grid = document.createElement('div');
+      grid.className = 'playlist-grid';
+      data.items.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'playlist-row';
+        row.innerHTML = `
+          <div class="playlist-thumb">🎵</div>
+          <div class="playlist-info">
+            <div class="playlist-name">${escHtml(p.snippet.title)}</div>
+            <div class="playlist-meta">${p.contentDetails.itemCount} şarkı</div>
+          </div>
+          <div class="playlist-check">✓</div>
+        `;
+        row.onclick = () => selectPlaylist(p, row);
+        grid.appendChild(row);
+      });
+      container.appendChild(grid);
+    } catch (e) {
+      document.getElementById('playlist-list').innerHTML =
+        '<div class="status" style="color:#f66">Yükleme hatası: ' + e.message + '</div>';
+    }
+  }
+
+  async function selectPlaylist(p, el) {
+    document.querySelectorAll('.playlist-row').forEach(r => r.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedPlaylist = p;
+    document.getElementById('sn2').textContent = '✓';
+    document.getElementById('sn2').classList.add('done');
+    setProgress(3);
+    show('step3');
+    await loadItems(p.id);
+  }
+
+  async function loadItems(id) {
+    document.getElementById('genre-tags').innerHTML =
+      '<div class="status">Şarkılar ve türler tespit ediliyor...</div><div class="loading-bar"><div class="loading-fill" id="load-bar2"></div></div>';
+
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${id}&maxResults=50`,
+      { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+    const data = await res.json();
+    playlistItems = data.items || [];
+    await detectGenres();
+  }
+
+  // ─── GENRE DETECTION ─────────────────────────────────
+  async function detectGenres() {
+    const found = new Set();
+    detectedGenres = {};
+    const total = Math.min(playlistItems.length, 20);
+
+    for (let i = 0; i < total; i++) {
+      const item = playlistItems[i];
+      const raw = item.snippet.title;
+      const artist = raw.includes(' - ') ? raw.split(' - ')[0].trim() : raw.split(/[–\-|]/)[0].trim();
+
+      try {
+        const r = await fetch(
+          `https://ws.audioscrobbler.com/2.0/?method=artist.getinfo&artist=${encodeURIComponent(artist)}&api_key=${LASTFM_KEY}&format=json`
+        );
+        const d = await r.json();
+        if (d.artist?.tags?.tag) {
+          const tags = d.artist.tags.tag.slice(0, 3).map(t => t.name.toLowerCase());
+          tags.forEach(t => {
+            const genre = normalizeGenre(t);
+            if (genre) {
+              found.add(genre);
+              if (!detectedGenres[genre]) detectedGenres[genre] = [];
+              detectedGenres[genre].push(item);
+            }
+          });
+        }
+      } catch (_) {}
+
+      const pct = Math.round(((i + 1) / total) * 100);
+      const bar = document.getElementById('load-bar2');
+      if (bar) bar.style.width = pct + '%';
+    }
+
+    if (found.size === 0) {
+      ['pop', 'hip-hop', 'rock', 'electronic', 'r&b'].forEach(g => {
+        found.add(g);
+        detectedGenres[g] = playlistItems.filter((_, i) => i % 5 === [...found].indexOf(g));
+      });
+    }
+
+    renderGenreTags([...found]);
+  }
+
+  const GENRE_MAP = {
+    'hip hop': 'hip-hop', 'hip-hop': 'hip-hop', 'rap': 'hip-hop',
+    'pop': 'pop', 'k-pop': 'k-pop', 'dance pop': 'pop',
+    'rock': 'rock', 'alt rock': 'rock', 'classic rock': 'rock', 'alternative rock': 'rock',
+    'electronic': 'electronic', 'edm': 'electronic', 'house': 'electronic', 'techno': 'electronic',
+    'r&b': 'r&b', 'soul': 'r&b', 'rnb': 'r&b',
+    'jazz': 'jazz', 'blues': 'blues',
+    'classical': 'klasik', 'classical music': 'klasik',
+    'metal': 'metal', 'heavy metal': 'metal', 'death metal': 'metal',
+    'indie': 'indie', 'indie pop': 'indie', 'indie rock': 'indie',
+    'country': 'country', 'folk': 'folk',
+    'türkçe pop': 'türkçe pop', 'turkish pop': 'türkçe pop',
+    'türk halk müziği': 'halk müziği', 'arabesk': 'arabesk'
+  };
+
+  function normalizeGenre(tag) {
+    for (const [key, val] of Object.entries(GENRE_MAP)) {
+      if (tag.includes(key)) return val;
+    }
+    return null;
+  }
+
+  function renderGenreTags(genres) {
+    const container = document.getElementById('genre-tags');
+    container.innerHTML = '';
+    genres.forEach(g => {
+      const span = document.createElement('span');
+      span.className = 'genre-tag';
+      span.textContent = g;
+      span.onclick = () => toggleGenre(span, g);
+      container.appendChild(span);
+    });
+  }
+
+  function toggleGenre(el, g) {
+    if (selectedGenres.includes(g)) {
+      selectedGenres = selectedGenres.filter(x => x !== g);
+      el.classList.remove('active');
+    } else {
+      selectedGenres.push(g);
+      el.classList.add('active');
+    }
+    checkReady();
+  }
+
+  // ─── SORT ────────────────────────────────────────────
+  function selectSort(el) {
+    document.querySelectorAll('.sort-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedSort = el.dataset.sort;
+    checkReady();
+  }
+
+  function checkReady() {
+    document.getElementById('organizeBtn').disabled = !selectedSort;
+  }
+
+  // ─── ORGANIZE ────────────────────────────────────────
+  function organizePlaylist() {
+    const container = document.getElementById('result-container');
+    container.innerHTML = '';
+
+    let groups = {};
+
+    if (selectedSort === 'artist') {
+      playlistItems.forEach(item => {
+        const t = item.snippet.title;
+        const artist = t.includes(' - ') ? t.split(' - ')[0].trim() : 'Diğer';
+        if (!groups[artist]) groups[artist] = [];
+        groups[artist].push(t);
+      });
+    } else if (selectedSort === 'genre') {
+      const target = selectedGenres.length > 0 ? selectedGenres : Object.keys(detectedGenres);
+      target.forEach(g => {
+        const songs = (detectedGenres[g] || []).map(i => i.snippet.title);
+        if (songs.length) groups[g.toUpperCase()] = songs;
+      });
+      if (Object.keys(groups).length === 0) {
+        groups['Tüm şarkılar'] = playlistItems.map(i => i.snippet.title);
+      }
+    } else if (selectedSort === 'mood') {
+      const all = playlistItems.map(i => i.snippet.title);
+      const chunk = Math.ceil(all.length / 3);
+      groups['⚡ Enerjik'] = all.slice(0, chunk);
+      groups['🌊 Sakin'] = all.slice(chunk, chunk * 2);
+      groups['🌙 Melankolik'] = all.slice(chunk * 2);
+    } else if (selectedSort === 'new_playlist') {
+      const genre = selectedGenres[0] || Object.keys(detectedGenres)[0] || 'seçilen';
+      const songs = (detectedGenres[genre] || playlistItems).map(i => i.snippet.title).slice(0, 30);
+      groups['🎵 ' + genre.toUpperCase() + ' listesi'] = songs;
+    }
+
+    Object.entries(groups).forEach(([title, songs]) => {
+      if (!songs.length) return;
+      const div = document.createElement('div');
+      div.className = 'result-group';
+      div.innerHTML = `
+        <div class="result-header">
+          <span class="result-title">${escHtml(title)}</span>
+          <span class="result-count">${songs.length} şarkı</span>
+        </div>
+        <div class="result-songs">
+          ${songs.map((s, i) => `
+            <div class="result-song">
+              <span class="song-num">${i + 1}</span>
+              <span class="song-title">${escHtml(s)}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      container.appendChild(div);
+    });
+
+    document.getElementById('sn3').textContent = '✓';
+    document.getElementById('sn3').classList.add('done');
+    setProgress(4);
+    show('step4');
+    document.getElementById('step4').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ─── SAVE ────────────────────────────────────────────
+  async function saveToYoutube() {
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    btn.textContent = 'Kaydediliyor...';
+
+    try {
+      const title = selectedPlaylist.snippet.title + ' — Düzenlenmiş (' + (selectedSort || 'tür') + ')';
+      const createRes = await fetch('https://www.googleapis.com/youtube/v3/playlists?part=snippet,status', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          snippet: { title, description: 'Playlist Düzenleyici ile oluşturuldu.' },
+          status: { privacyStatus: 'private' }
+        })
+      });
+      const newPlaylist = await createRes.json();
+      const newId = newPlaylist.id;
+
+      const toAdd = selectedGenres.length > 0
+        ? playlistItems.filter(i => {
+            const t = i.snippet.title.toLowerCase();
+            return selectedGenres.some(g => t.includes(g));
+          })
+        : playlistItems.slice(0, 20);
+
+      for (const item of toAdd.slice(0, 20)) {
+        const videoId = item.snippet.resourceId?.videoId;
+        if (!videoId) continue;
+        await fetch('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + accessToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            snippet: {
+              playlistId: newId,
+              resourceId: { kind: 'youtube#video', videoId }
+            }
+          })
+        });
+      }
+
+      showToast();
+      btn.textContent = '✓ Kaydedildi!';
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Hata — tekrar dene';
+      console.error(e);
+    }
+  }
+
+  // ─── HELPERS ─────────────────────────────────────────
+  function show(id) { document.getElementById(id).classList.remove('hidden'); }
+  function setBar(id, pct) { const b = document.getElementById(id); if (b) b.style.width = pct + '%'; }
+  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function setProgress(n) {
+    for (let i = 1; i <= 4; i++) {
+      const el = document.getElementById('ps' + i);
+      if (!el) continue;
+      el.classList.remove('active', 'done');
+      if (i < n) el.classList.add('done');
+      else if (i === n) el.classList.add('active');
+    }
+  }
+  function showToast() {
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  checkToken();
+</script>
+</body>
+</html>

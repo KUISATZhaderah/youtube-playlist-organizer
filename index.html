@@ -445,8 +445,36 @@
 
   // ─── PLAYLISTS ───────────────────────────────────────
   async function loadPlaylists() {
-    setBar('load-bar1', 40);
+    setBar('load-bar1', 30);
     try {
+      const container = document.getElementById('playlist-list');
+      const grid = document.createElement('div');
+      grid.className = 'playlist-grid';
+
+      // Beğendiklerim (Liked Music) — özel liste
+      const likedRes = await fetch(
+        'https://www.googleapis.com/youtube/v3/videos?part=snippet&myRating=like&maxResults=1',
+        { headers: { Authorization: 'Bearer ' + accessToken } }
+      );
+      const likedData = await likedRes.json();
+      setBar('load-bar1', 50);
+
+      // Beğendiklerim satırını ekle
+      const likedRow = document.createElement('div');
+      likedRow.className = 'playlist-row';
+      likedRow.innerHTML = `
+        <div class="playlist-thumb">❤️</div>
+        <div class="playlist-info">
+          <div class="playlist-name">Beğendiklerim</div>
+          <div class="playlist-meta">Beğenilen videolar</div>
+        </div>
+        <div class="playlist-check">✓</div>
+      `;
+      const likedPlaylist = { id: 'liked', snippet: { title: 'Beğendiklerim' }, isLiked: true };
+      likedRow.onclick = () => selectPlaylist(likedPlaylist, likedRow);
+      grid.appendChild(likedRow);
+
+      // Normal playlist'ler
       const res = await fetch(
         'https://www.googleapis.com/youtube/v3/playlists?part=snippet,contentDetails&mine=true&maxResults=30',
         { headers: { Authorization: 'Bearer ' + accessToken } }
@@ -454,28 +482,24 @@
       const data = await res.json();
       setBar('load-bar1', 100);
 
-      const container = document.getElementById('playlist-list');
-      if (!data.items || data.items.length === 0) {
-        container.innerHTML = '<div class="status">Hiç playlist bulunamadı.</div>';
-        return;
+      if (data.items && data.items.length > 0) {
+        data.items.forEach(p => {
+          const row = document.createElement('div');
+          row.className = 'playlist-row';
+          row.innerHTML = `
+            <div class="playlist-thumb">🎵</div>
+            <div class="playlist-info">
+              <div class="playlist-name">${escHtml(p.snippet.title)}</div>
+              <div class="playlist-meta">${p.contentDetails.itemCount} şarkı</div>
+            </div>
+            <div class="playlist-check">✓</div>
+          `;
+          row.onclick = () => selectPlaylist(p, row);
+          grid.appendChild(row);
+        });
       }
+
       container.innerHTML = '';
-      const grid = document.createElement('div');
-      grid.className = 'playlist-grid';
-      data.items.forEach(p => {
-        const row = document.createElement('div');
-        row.className = 'playlist-row';
-        row.innerHTML = `
-          <div class="playlist-thumb">🎵</div>
-          <div class="playlist-info">
-            <div class="playlist-name">${escHtml(p.snippet.title)}</div>
-            <div class="playlist-meta">${p.contentDetails.itemCount} şarkı</div>
-          </div>
-          <div class="playlist-check">✓</div>
-        `;
-        row.onclick = () => selectPlaylist(p, row);
-        grid.appendChild(row);
-      });
       container.appendChild(grid);
     } catch (e) {
       document.getElementById('playlist-list').innerHTML =
@@ -498,12 +522,28 @@
     document.getElementById('genre-tags').innerHTML =
       '<div class="status">Şarkılar ve türler tespit ediliyor...</div><div class="loading-bar"><div class="loading-fill" id="load-bar2"></div></div>';
 
-    const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${id}&maxResults=50`,
-      { headers: { Authorization: 'Bearer ' + accessToken } }
-    );
-    const data = await res.json();
-    playlistItems = data.items || [];
+    if (id === 'liked') {
+      // Beğendiklerim listesi özel endpoint
+      const res = await fetch(
+        'https://www.googleapis.com/youtube/v3/videos?part=snippet&myRating=like&maxResults=50',
+        { headers: { Authorization: 'Bearer ' + accessToken } }
+      );
+      const data = await res.json();
+      // Normal playlistItems formatına çevir
+      playlistItems = (data.items || []).map(v => ({
+        snippet: {
+          title: v.snippet.title,
+          resourceId: { videoId: v.id }
+        }
+      }));
+    } else {
+      const res = await fetch(
+        `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${id}&maxResults=50`,
+        { headers: { Authorization: 'Bearer ' + accessToken } }
+      );
+      const data = await res.json();
+      playlistItems = data.items || [];
+    }
     await detectGenres();
   }
 

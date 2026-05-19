@@ -133,6 +133,15 @@
       <div class="step-dot" id="sd2">2</div>
       <div class="card-title">Düzenlemek istediğin playlist'i seç</div>
     </div>
+    <!-- URL ile playlist ekle -->
+    <div style="margin-bottom:1rem;">
+      <p class="card-sub" style="margin-bottom:8px;">📎 Başka bir playlist URL'si yapıştır (isteğe bağlı):</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input id="url-input" type="text" placeholder="https://www.youtube.com/playlist?list=..." style="flex:1;min-width:200px;padding:9px 13px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:13px;font-family:DM Sans,sans-serif;outline:none;" />
+        <button class="btn btn-outline" onclick="addFromUrl()">+ Ekle</button>
+      </div>
+      <div id="url-status" style="font-size:12px;color:var(--text2);margin-top:6px;font-family:DM Mono,monospace;"></div>
+    </div>
     <div id="pl-list">
       <div class="status-txt">Playlist'ler yükleniyor...</div>
       <div class="load-bar"><div class="load-fill" id="lb1"></div></div>
@@ -233,6 +242,53 @@ function onLogin() {
   markDone('sd1'); show('step2'); loadPlaylists();
 }
 
+// ── URL'DEN PLAYLİST EKLE ───────────────────────────
+function extractPlaylistId(url) {
+  try {
+    const u = new URL(url.trim());
+    return u.searchParams.get('list');
+  } catch(_) {
+    // düz ID girilmiş olabilir
+    if (url.trim().startsWith('PL') || url.trim().startsWith('RD')) return url.trim();
+    return null;
+  }
+}
+
+async function addFromUrl() {
+  const input = document.getElementById('url-input');
+  const status = document.getElementById('url-status');
+  const val = input.value.trim();
+  if (!val) { status.textContent = '⚠ URL boş olamaz'; return; }
+
+  const plId = extractPlaylistId(val);
+  if (!plId) { status.textContent = '⚠ Geçerli bir YouTube playlist URL'si gir'; return; }
+
+  status.textContent = 'Playlist bilgisi çekiliyor...';
+  try {
+    const data = await ytGet('playlists?part=snippet,contentDetails&id=' + plId);
+    if (!data.items || data.items.length === 0) {
+      status.textContent = '⚠ Playlist bulunamadı veya gizli';
+      return;
+    }
+    const p = data.items[0];
+    const grid = document.getElementById('pl-list').querySelector('.pl-grid') || document.getElementById('pl-list');
+    const row = makeRow('🔗', p.snippet.title, p.contentDetails.itemCount + ' şarkı · URL ile eklendi', p);
+    if (grid.classList.contains('pl-grid')) {
+      grid.appendChild(row);
+    } else {
+      const newGrid = document.createElement('div');
+      newGrid.className = 'pl-grid';
+      newGrid.appendChild(row);
+      grid.innerHTML = '';
+      grid.appendChild(newGrid);
+    }
+    status.textContent = '✓ "' + p.snippet.title + '" listesi eklendi!';
+    input.value = '';
+  } catch(e) {
+    status.textContent = '⚠ Hata: ' + e.message;
+  }
+}
+
 // ── PLAYLISTS ────────────────────────────────────────
 async function loadPlaylists() {
   setBar('lb1', 30);
@@ -318,7 +374,7 @@ async function loadItems(id) {
     page++;
     setStatus('Taranan: ' + totalScanned + ' · Müzik: ' + allItems.length);
     setBar('lb2', Math.min(page * 7, 75));
-  } while (pageToken && page < 25);
+  } while (pageToken && page < 60);
 
   setStatus(allItems.length + ' müzik bulundu (' + totalScanned + ' içinden). Türler analiz ediliyor...');
   await detectGenres();
@@ -333,7 +389,7 @@ function parseDuration(iso) {
 // ── GENRE DETECTION ──────────────────────────────────
 async function detectGenres() {
   detectedGenres = {};
-  const sample = allItems.slice(0, 80);
+  const sample = allItems.slice(0, 3000);
   const total  = sample.length;
 
   for (let i = 0; i < total; i++) {

@@ -277,28 +277,57 @@ async function loadItems(id) {
     '<div class="status-txt" id="status-load">Şarkılar çekiliyor...</div><div class="load-bar"><div class="load-fill" id="lb2"></div></div>';
   allItems = [];
 
-  let pageToken = '', page = 0;
-  const endpoint = id === 'liked'
-    ? () => `videos?part=snippet&myRating=like&maxResults=50${pageToken ? '&pageToken=' + pageToken : ''}`
-    : () => `playlistItems?part=snippet&playlistId=${id}&maxResults=50${pageToken ? '&pageToken=' + pageToken : ''}`;
+  let pageToken = '', page = 0, totalScanned = 0;
 
   do {
-    const data = await ytGet(endpoint());
-    (data.items || []).forEach(v => {
-      if (id === 'liked') {
-        allItems.push({ snippet: { title: v.snippet.title, channelTitle: v.snippet.channelTitle, resourceId: { videoId: v.id } } });
-      } else {
-        if (v.snippet.resourceId?.videoId) allItems.push(v);
+    if (id === 'liked') {
+      const data = await ytGet('videos?part=snippet,contentDetails&myRating=like&maxResults=50' + (pageToken ? '&pageToken=' + pageToken : ''));
+      pageToken = data.nextPageToken || '';
+      (data.items || []).forEach(v => {
+        totalScanned++;
+        const dur     = parseDuration(v.contentDetails && v.contentDetails.duration ? v.contentDetails.duration : '');
+        const cat     = v.snippet && v.snippet.categoryId;
+        const isShort = dur > 0 && dur < 62;
+        const isMusic = cat === '10';
+        if (!isShort && isMusic) {
+          allItems.push({ snippet: { title: v.snippet.title, channelTitle: v.snippet.channelTitle, resourceId: { videoId: v.id } } });
+        }
+      });
+    } else {
+      const plData = await ytGet('playlistItems?part=snippet&playlistId=' + id + '&maxResults=50' + (pageToken ? '&pageToken=' + pageToken : ''));
+      pageToken = plData.nextPageToken || '';
+      const plItems = (plData.items || []).filter(i => i.snippet.resourceId && i.snippet.resourceId.videoId);
+      if (plItems.length > 0) {
+        const ids     = plItems.map(i => i.snippet.resourceId.videoId).join(',');
+        const details = await ytGet('videos?part=snippet,contentDetails&id=' + ids);
+        const detMap  = {};
+        (details.items || []).forEach(v => { detMap[v.id] = v; });
+        plItems.forEach(item => {
+          totalScanned++;
+          const vid = item.snippet.resourceId.videoId;
+          const det = detMap[vid];
+          if (!det) return;
+          const dur     = parseDuration(det.contentDetails && det.contentDetails.duration ? det.contentDetails.duration : '');
+          const cat     = det.snippet && det.snippet.categoryId;
+          const isShort = dur > 0 && dur < 62;
+          const isMusic = cat === '10';
+          if (!isShort && isMusic) allItems.push(item);
+        });
       }
-    });
-    pageToken = data.nextPageToken || '';
+    }
     page++;
-    setStatus(`${allItems.length} şarkı çekildi...`);
-    setBar('lb2', Math.min(page * 8, 75));
-  } while (pageToken && page < 25); // max ~1250 şarkı
+    setStatus('Taranan: ' + totalScanned + ' · Müzik: ' + allItems.length);
+    setBar('lb2', Math.min(page * 7, 75));
+  } while (pageToken && page < 25);
 
-  setStatus(`${allItems.length} şarkı bulundu. Türler analiz ediliyor...`);
+  setStatus(allItems.length + ' müzik bulundu (' + totalScanned + ' içinden). Türler analiz ediliyor...');
   await detectGenres();
+}
+
+function parseDuration(iso) {
+  var m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!m) return 0;
+  return (parseInt(m[1] || 0) * 3600) + (parseInt(m[2] || 0) * 60) + parseInt(m[3] || 0);
 }
 
 // ── GENRE DETECTION ──────────────────────────────────
